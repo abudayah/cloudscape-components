@@ -84,7 +84,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "Cloudscape One Theme build ${GITHUB_SHA:0:7}" \
-            --notes "Built from `$GITHUB_SHA` with INCLUDE_ONE_THEME=true. This prerelease contains the compiled @cloudscape-design/components package for MokhaLab integration." \
+            --notes "Built from ${GITHUB_SHA} with INCLUDE_ONE_THEME=true. This prerelease contains the compiled @cloudscape-design/components package for MokhaLab integration." \
             --prerelease
 
       - name: Upload package artifact
