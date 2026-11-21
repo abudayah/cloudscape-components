@@ -1,0 +1,96 @@
+name: Build Cloudscape with One Theme
+
+on:
+  push:
+    branches:
+      - one-theme-build
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: one-theme-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build One Theme package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+        env:
+          HUSKY: 0
+
+      - name: Build Cloudscape with One Theme enabled
+        run: npm run build
+        env:
+          NODE_ENV: production
+          INCLUDE_ONE_THEME: 'true'
+          HUSKY: 0
+
+      - name: Verify One Theme was compiled into the package
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const environmentPath = path.join('lib', 'components', 'internal', 'environment.json');
+          if (!fs.existsSync(environmentPath)) {
+            throw new Error(`Missing generated environment file: ${environmentPath}`);
+          }
+
+          const environment = JSON.parse(fs.readFileSync(environmentPath, 'utf8'));
+          if (environment.INCLUDE_ONE_THEME !== true) {
+            throw new Error('INCLUDE_ONE_THEME was not enabled in the generated package.');
+          }
+
+          const baseThemePath = path.join('lib', 'components', 'internal', 'base-theme', 'styles.css.js');
+          if (!fs.existsSync(baseThemePath)) {
+            throw new Error(`Missing generated base theme stylesheet: ${baseThemePath}`);
+          }
+
+          const stylesheet = fs.readFileSync(baseThemePath, 'utf8');
+          if (!stylesheet.includes('awsui-one-theme')) {
+            throw new Error('The generated stylesheet does not contain the One Theme selector.');
+          }
+
+          console.log('Verified: One Theme environment flag and generated CSS selector are present.');
+          NODE
+
+      - name: Pack the built components package
+        run: |
+          mkdir -p artifacts
+          npm pack ./lib/components --pack-destination artifacts
+          test -n "$(find artifacts -maxdepth 1 -name '*.tgz' -print -quit)"
+
+      - name: Publish a prerelease asset for app integration
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PACKAGE_TARBALL="$(find artifacts -maxdepth 1 -name '*.tgz' -print -quit)"
+          TAG="one-theme-build-${GITHUB_SHA:0:12}"
+          gh release create "$TAG" "$PACKAGE_TARBALL" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Cloudscape One Theme build ${GITHUB_SHA:0:7}" \
+            --notes "Built from `$GITHUB_SHA` with INCLUDE_ONE_THEME=true. This prerelease contains the compiled @cloudscape-design/components package for MokhaLab integration." \
+            --prerelease
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudscape-components-one-theme
+          path: artifacts/*.tgz
+          if-no-files-found: error
+          retention-days: 30
