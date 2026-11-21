@@ -61,7 +61,7 @@ jobs:
               const entryPath = path.join(directory, entry.name);
               if (entry.isDirectory()) {
                 matches.push(...findOneThemeSelectors(entryPath));
-              } else if (/\\.(?:js|cjs|mjs|css)$/.test(entry.name)) {
+              } else if (/\.(?:js|cjs|mjs|css)$/.test(entry.name)) {
                 const source = fs.readFileSync(entryPath, 'utf8');
                 if (source.includes('awsui-one-theme')) {
                   matches.push(entryPath);
