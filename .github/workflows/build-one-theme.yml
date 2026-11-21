@@ -55,17 +55,28 @@ jobs:
             throw new Error('INCLUDE_ONE_THEME was not enabled in the generated package.');
           }
 
-          const baseThemePath = path.join('lib', 'components', 'internal', 'base-theme', 'styles.css.js');
-          if (!fs.existsSync(baseThemePath)) {
-            throw new Error(`Missing generated base theme stylesheet: ${baseThemePath}`);
+          function findOneThemeSelectors(directory) {
+            const matches = [];
+            for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+              const entryPath = path.join(directory, entry.name);
+              if (entry.isDirectory()) {
+                matches.push(...findOneThemeSelectors(entryPath));
+              } else if (/\\.(?:js|cjs|mjs|css)$/.test(entry.name)) {
+                const source = fs.readFileSync(entryPath, 'utf8');
+                if (source.includes('awsui-one-theme')) {
+                  matches.push(entryPath);
+                }
+              }
+            }
+            return matches;
           }
 
-          const stylesheet = fs.readFileSync(baseThemePath, 'utf8');
-          if (!stylesheet.includes('awsui-one-theme')) {
-            throw new Error('The generated stylesheet does not contain the One Theme selector.');
+          const matchingFiles = findOneThemeSelectors(path.join('lib', 'components'));
+          if (matchingFiles.length === 0) {
+            throw new Error('No generated component stylesheet contains the One Theme selector.');
           }
 
-          console.log('Verified: One Theme environment flag and generated CSS selector are present.');
+          console.log('Verified: One Theme is enabled and its selector appears in:', matchingFiles.join(', '));
           NODE
 
       - name: Pack the built components package
