@@ -32,8 +32,8 @@ jobs:
         env:
           HUSKY: 0
 
-      - name: Build Cloudscape with One Theme enabled
-        run: npm run build
+      - name: Build component package with One Theme enabled
+        run: npm run quick-build
         env:
           NODE_ENV: production
           INCLUDE_ONE_THEME: 'true'
